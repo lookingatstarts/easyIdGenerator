@@ -1,1 +1,1 @@
-# easyIdGenerator
+# EasyIdGenerator
