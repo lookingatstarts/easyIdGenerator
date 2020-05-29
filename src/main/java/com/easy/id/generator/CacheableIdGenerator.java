@@ -12,7 +12,7 @@ import java.util.Set;
 @Component
 public class CacheableIdGenerator implements IdGenerator {
 
-    private final String businessType;
+    //private final String businessType;
     private volatile Segment current;
     private volatile Segment next;
     @Autowired

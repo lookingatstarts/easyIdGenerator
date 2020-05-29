@@ -1,0 +1,12 @@
+server:
+  port: 9090
+
+easy-id:
+  db:
+    name: primary,sencondary
+spring:
+  datasource:
+    password:
+    driver-class-name:
+    hikari:
+      transaction-isolation:

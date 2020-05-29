@@ -41,7 +41,7 @@ public class Segment {
     /**
      * 模数
      */
-    private Integer mod;
+    private Integer remainder;
 
     /**
      * 创建时间
@@ -51,5 +51,5 @@ public class Segment {
     /**
      * 更新时间
      */
-    private Long updateAt;
+    private Long updatedAt;
 }

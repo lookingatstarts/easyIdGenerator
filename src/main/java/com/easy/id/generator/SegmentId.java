@@ -35,7 +35,7 @@ public class SegmentId {
         // 当该号段30%的id被使用完时，开始异步加载下一个号段
         loadingNextSegmentAt = currentId.get() + (segment.getStep() * 3 / 10);
         increment = segment.getIncrement();
-        mod = segment.getMod();
+        mod = segment.getRemainder();
         init();
     }
 
