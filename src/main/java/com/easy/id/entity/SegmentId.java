@@ -1,8 +1,4 @@
-package com.easy.id.generator;
-
-import com.easy.id.dao.entity.Segment;
-import com.easy.id.entity.Result;
-import com.easy.id.entity.ResultCode;
+package com.easy.id.entity;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,12 +29,12 @@ public class SegmentId {
     private volatile boolean hasInit;
 
     public SegmentId(Segment segment) {
-        maxId = segment.getMaxId();
-        currentId = new AtomicLong(segment.getMaxId() - segment.getStep());
+        this.maxId = segment.getMaxId();
+        this.currentId = new AtomicLong(segment.getMaxId() - segment.getStep());
         // 当该号段30%的id被使用完时，开始异步加载下一个号段
-        loadingNextSegmentAt = currentId.get() + (segment.getStep() * 3 / 10);
-        increment = segment.getIncrement();
-        remainder = segment.getRemainder();
+        this.loadingNextSegmentAt = currentId.get() + (segment.getStep() * 3 / 10);
+        this.increment = segment.getIncrement();
+        this.remainder = segment.getRemainder();
         init();
     }
 
@@ -67,13 +63,13 @@ public class SegmentId {
                 return;
             }
             long id = currentId.get();
-            if (id % increment == remainder) {
+            if ((id % increment) == remainder) {
                 hasInit = true;
                 return;
             }
             for (int i = 0; i <= increment; i++) {
                 id = currentId.incrementAndGet();
-                if (id % increment == remainder) {
+                if ((id % increment) == remainder) {
                     currentId.addAndGet(-increment);
                     hasInit = true;
                     return;

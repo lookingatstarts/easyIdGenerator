@@ -1,4 +1,4 @@
-package com.easy.id.dao.entity;
+package com.easy.id.entity;
 
 import lombok.Data;
 

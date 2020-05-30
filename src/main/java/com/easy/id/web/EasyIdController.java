@@ -1,13 +1,15 @@
-package com.easy.id;
+package com.easy.id.web;
 
-import com.easy.id.service.SegmentService;
+import com.easy.id.service.EasyIdService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.constraints.NotEmpty;
+import java.util.Set;
 
 /**
  * @author zhangbingbing
@@ -20,11 +22,16 @@ import javax.validation.constraints.NotEmpty;
 public class EasyIdController {
 
     @Autowired
-    private SegmentService segmentService;
+    private EasyIdService easyIdService;
 
-    // todo做检验
     @GetMapping("/next_id")
     public Long getNextId(@NotEmpty String businessType) {
-        return segmentService.getNextSegment(businessType).getId();
+        return easyIdService.getNextId(businessType);
+    }
+
+    @GetMapping("/next_id/batches")
+    public Set<Long> getNextId(@RequestParam(value = "batches_size", defaultValue = "100") Integer batchSize,
+                               @NotEmpty String businessType) {
+        return easyIdService.getNextIdBatch(businessType, batchSize);
     }
 }
