@@ -1,7 +1,13 @@
 package com.easy.id;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@SpringBootApplication
+@EnableConfigurationProperties
 public class EasyIdGeneratorApplication {
     public static void main(String[] args) {
-        System.out.println("EasyIdGenerator");
+        SpringApplication.run(EasyIdGeneratorApplication.class, args);
     }
 }
