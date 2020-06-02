@@ -8,6 +8,7 @@ import com.easy.id.exception.SegmentNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.sql.Connection;
@@ -15,11 +16,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * 默认启用号段的方式
+ */
 @Service
 @Slf4j
+@ConditionalOnProperty(prefix = "easy-id-generator", name = "segment-enable", havingValue = "true", matchIfMissing = true)
 public class SegmentIdServiceImpl implements SegmentIdService {
-
-
     private final static String SELECT_BY_BUSINESS_TYPE_SQL = "select * from segment where business_type=?";
     private final static String UPDATE_SEGMENT_MAX_ID = "update segment set max_id= ?,version=?,updated_at=? where id =? and version=?";
     @Value("${easy-id.fetch-segment-retry-times:2}")

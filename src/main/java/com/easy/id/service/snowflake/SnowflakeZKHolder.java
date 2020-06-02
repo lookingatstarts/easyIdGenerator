@@ -1,6 +1,7 @@
 package com.easy.id.service.snowflake;
 
 import com.alibaba.fastjson.JSON;
+import com.easy.id.util.IPUtil;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,8 +11,14 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.RetryUntilElapsed;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -21,14 +28,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
+@Component
+@ConditionalOnProperty(prefix = "easy-id-generator", name = "snowflake-enable", havingValue = "true")
 public class SnowflakeZKHolder {
 
+    private final String SPLIT = "-";
     /**
      * 保存所有数据持久的节点
      */
@@ -37,21 +44,25 @@ public class SnowflakeZKHolder {
      * 持久化workerId，文件存放位置
      */
     private final String DUMP_PATH = "/workerID/dump.properties";
+    @Autowired
+    @Qualifier("updateDataToZKScheduledExecutorService")
+    private ScheduledExecutorService scheduledExecutorService;
     /**
      * 本机地址
      */
-    private final String localIp;
+    private String localIp;
     /**
      * 本机端口
      */
-    private final String localPort;
+    @Value("${server.port}")
+    private String localPort;
     /**
      * zk连接地址
      * eg: ip1:port1,ip2:port2
      */
-    private final String zkConnectionString;
-    private final AtomicInteger threadIncr = new AtomicInteger(0);
-    private int workerId;
+    @Value("${easy-id-generator.snowflake-enable.zk.connection-string}")
+    private String zkConnectionString;
+    private Integer workerId;
     /**
      * ZK_PATH/ip:port-0000001序列号
      */
@@ -60,39 +71,31 @@ public class SnowflakeZKHolder {
      * 上次更新数据时间
      */
     private long lastUpdateAt;
-    private ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(1, (r) -> {
-        int incr = threadIncr.get();
-        if (incr >= 1000) {
-            threadIncr.set(0);
-            incr = 1;
-        }
-        return new Thread(r, "easy-id-generator-upload-time-zk-schedule-" + incr);
-    }, new ThreadPoolExecutor.CallerRunsPolicy());
 
-    public SnowflakeZKHolder(String localIp, String localPort, String zkConnectionString) {
-        this.localIp = localIp;
-        this.localPort = localPort;
-        this.zkConnectionString = zkConnectionString;
-        this.localZKPath = ZK_PATH + "/" + localIp + ":" + localPort;
+    @PostConstruct
+    public void postConstruct() {
+        try {
+            init();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
-
-    public boolean init() {
+    private boolean init() throws Exception {
+        localIp = IPUtil.getHostAddress();
+        this.localZKPath = ZK_PATH + "/" + localIp + ":" + localPort;
         final CuratorFramework client = connectToZk();
-        if (client == null) {
-            return false;
-        }
         try {
             client.start();
             final Stat stat = client.checkExists().forPath(ZK_PATH);
             // 不存在根结点，第一次使用，创建根结点
             if (stat == null) {
                 // /easy-id-generator/snowflake/forever/ip:port-0000000,并上传数据
-                localZKPath = createNode(client, localZKPath);
+                localZKPath = createPersistentSequentialNode(client, localZKPath, buildData());
                 if (localZKPath == null) {
                     return false;
                 }
-                workerId = 0;
+                workerId = getWorkerId(localZKPath);
                 updateWorkerId(workerId);
                 // 定时上报本机时间到zk
                 scheduledUploadTimeToZK(client, localZKPath);
@@ -117,7 +120,7 @@ public class SnowflakeZKHolder {
                 updateWorkerId(workerId);
                 return true;
             }
-            localZKPath = createNode(client, localZKPath);
+            localZKPath = createPersistentSequentialNode(client, localZKPath, buildData());
             if (localZKPath == null) {
                 return false;
             }
@@ -135,6 +138,11 @@ public class SnowflakeZKHolder {
         return false;
     }
 
+
+    private Integer getWorkerId(String localZKPath) {
+        String[] split = localZKPath.split(SPLIT);
+        return Integer.parseInt(split[0]);
+    }
 
     /**
      * @return true 检查通过
@@ -204,30 +212,20 @@ public class SnowflakeZKHolder {
         }
     }
 
-    private String createNode(CuratorFramework client, String path) {
-        try {
-            return client.create()
-                    .creatingParentsIfNeeded()
-                    .withMode(CreateMode.PERSISTENT_SEQUENTIAL)
-                    .forPath(path + "-", buildData());
-        } catch (Exception e) {
-            log.error("create node {} error", path, e);
-        }
-        return null;
+    private String createPersistentSequentialNode(CuratorFramework client, String path, byte[] data) throws Exception {
+        return client.create()
+                .creatingParentsIfNeeded()
+                .withMode(CreateMode.PERSISTENT_SEQUENTIAL)
+                .forPath(path + "-", data);
     }
 
     private CuratorFramework connectToZk() {
-        try {
-            return CuratorFrameworkFactory.builder()
-                    .connectString(zkConnectionString)
-                    .retryPolicy(new RetryUntilElapsed((int) TimeUnit.SECONDS.toMillis(5), (int) TimeUnit.SECONDS.toMillis(1)))
-                    .connectionTimeoutMs((int) TimeUnit.SECONDS.toMillis(10))
-                    .sessionTimeoutMs((int) TimeUnit.SECONDS.toMillis(6))
-                    .build();
-        } catch (Exception e) {
-            log.error("connecting to zookeeper fail ", e);
-        }
-        return null;
+        return CuratorFrameworkFactory.builder()
+                .connectString(zkConnectionString)
+                .retryPolicy(new RetryUntilElapsed((int) TimeUnit.SECONDS.toMillis(5), (int) TimeUnit.SECONDS.toMillis(1)))
+                .connectionTimeoutMs((int) TimeUnit.SECONDS.toMillis(10))
+                .sessionTimeoutMs((int) TimeUnit.SECONDS.toMillis(6))
+                .build();
     }
 
     private byte[] buildData() {
@@ -238,6 +236,9 @@ public class SnowflakeZKHolder {
         return JSON.parseObject(json, Endpoint.class);
     }
 
+    /**
+     * 上传到zk的数据
+     */
     @Data
     @AllArgsConstructor
     @NoArgsConstructor

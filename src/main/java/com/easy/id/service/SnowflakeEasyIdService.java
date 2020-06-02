@@ -1,6 +1,8 @@
 package com.easy.id.service;
 
 import com.easy.id.exception.SystemClockCallbackException;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.Random;
@@ -12,8 +14,9 @@ import java.util.Set;
  * @Description 雪花算法实现
  * @createTime 2020年06月01日
  */
+@Service
+@ConditionalOnBean(name = "snowflakeZKHolder")
 public class SnowflakeEasyIdService implements EasyIdService {
-
     /**
      * 2020-06-01 00:00:00 (UTC+8)
      */
@@ -27,8 +30,8 @@ public class SnowflakeEasyIdService implements EasyIdService {
     private final Random random = new Random();
     private int sequence = 0;
     private long lastTimestamp = -1L;
-    // todo 使用zookeeper获取workId
-    private int workId = 1;
+    // todo
+    private Integer workId;
 
     private synchronized long nextId() {
         long now = now();

@@ -4,3 +4,10 @@ server:
 easy-id:
   db-list: ["db1","db2"]
   fetch-segment-retry-times: 3 # 从数据库获取号段失败重试次数
+
+
+easy-id-generator:
+  snowflake-enable: false
+    zk:
+      connection-string: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
+  segment-enable: true
