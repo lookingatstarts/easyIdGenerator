@@ -1,42 +1,35 @@
-package com.easy.id.generator;
+package com.easy.id.service.segment;
 
 import com.easy.id.entity.Result;
 import com.easy.id.entity.ResultCode;
 import com.easy.id.entity.SegmentId;
 import com.easy.id.exception.GetNextIdException;
-import com.easy.id.service.SegmentIdService;
+import com.easy.id.service.generator.IdGenerator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * 不同businessType，拥有不同的IdGenerator
+ */
 @Slf4j
-public class CachedIdGenerator implements IdGenerator {
+public class SegmentCachedIdGenerator implements IdGenerator {
 
+    private final ExecutorService fetchNextSegmentExecutor;
+    private final SegmentIdService segmentIdService;
     private final String businessType;
     private final Object lock = new Object();
     private volatile SegmentId currentSegmentId;
     private volatile SegmentId nextSegmentId;
     private volatile boolean isLoadingNextSegment = false;
-    private SegmentIdService segmentIdService;
-    private AtomicInteger threadIdIncr = new AtomicInteger(1);
 
-    private final ExecutorService executorService = new ThreadPoolExecutor(1, 1, 5, TimeUnit.MINUTES, new SynchronousQueue<>(), r -> {
-        if (threadIdIncr.get() > 1000) {
-            threadIdIncr.set(1);
-        }
-        return new Thread(r, "fetch-next-segment-thread-" + threadIdIncr.getAndIncrement());
-    }, new ThreadPoolExecutor.CallerRunsPolicy());
-
-    public CachedIdGenerator(String businessType, SegmentIdService segmentIdService) {
-        this.businessType = businessType;
+    public SegmentCachedIdGenerator(ExecutorService fetchNextSegmentExecutor, SegmentIdService segmentIdService, String businessType) {
+        this.fetchNextSegmentExecutor = fetchNextSegmentExecutor;
         this.segmentIdService = segmentIdService;
+        this.businessType = businessType;
     }
 
     private synchronized void loadCurrent() {
@@ -61,7 +54,7 @@ public class CachedIdGenerator implements IdGenerator {
         synchronized (lock) {
             if (nextSegmentId == null && !isLoadingNextSegment) {
                 isLoadingNextSegment = true;
-                executorService.submit(() -> {
+                fetchNextSegmentExecutor.submit(() -> {
                     try {
                         log.debug("异步加载下个号段");
                         nextSegmentId = segmentIdService.fetchNextSegmentId(businessType);

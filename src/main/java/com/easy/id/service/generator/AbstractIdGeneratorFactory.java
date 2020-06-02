@@ -1,4 +1,4 @@
-package com.easy.id.generator;
+package com.easy.id.service.generator;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

@@ -1,4 +1,4 @@
-package com.easy.id.service;
+package com.easy.id.service.segment;
 
 import com.easy.id.entity.SegmentId;
 

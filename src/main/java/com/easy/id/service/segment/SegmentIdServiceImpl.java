@@ -1,6 +1,7 @@
-package com.easy.id.service;
+package com.easy.id.service.segment;
 
 import com.easy.id.config.DataSourceConfig;
+import com.easy.id.config.Module;
 import com.easy.id.entity.Segment;
 import com.easy.id.entity.SegmentId;
 import com.easy.id.exception.FetchSegmentFailException;
@@ -15,14 +16,17 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * 默认启用号段的方式
+ */
 @Service
 @Slf4j
+@Module("segment.enable")
 public class SegmentIdServiceImpl implements SegmentIdService {
-
 
     private final static String SELECT_BY_BUSINESS_TYPE_SQL = "select * from segment where business_type=?";
     private final static String UPDATE_SEGMENT_MAX_ID = "update segment set max_id= ?,version=?,updated_at=? where id =? and version=?";
-    @Value("${easy-id.fetch-segment-retry-times:2}")
+    @Value("${easy-id-generator.segment.fetch-segment-retry-times:2}")
     private int retry;
     @Autowired
     private DataSourceConfig.DynamicDataSource dynamicDataSource;
