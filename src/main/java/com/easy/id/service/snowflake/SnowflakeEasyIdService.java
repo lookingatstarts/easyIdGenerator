@@ -1,9 +1,13 @@
-package com.easy.id.service;
+package com.easy.id.service.snowflake;
 
+import com.easy.id.config.Module;
 import com.easy.id.exception.SystemClockCallbackException;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import com.easy.id.service.EasyIdService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -15,8 +19,11 @@ import java.util.Set;
  * @createTime 2020年06月01日
  */
 @Service
-@ConditionalOnBean(name = "snowflakeZKHolder")
+@Module("snowflake.enable")
+@Slf4j
 public class SnowflakeEasyIdService implements EasyIdService {
+    @Autowired
+    private SnowflakeZKHolder snowflakeZKHolder;
     /**
      * 2020-06-01 00:00:00 (UTC+8)
      */
@@ -30,8 +37,17 @@ public class SnowflakeEasyIdService implements EasyIdService {
     private final Random random = new Random();
     private int sequence = 0;
     private long lastTimestamp = -1L;
-    // todo
-    private Integer workId;
+    private int workId;
+
+    @PostConstruct
+    public void init() {
+        final int workerID = snowflakeZKHolder.getWorkerID();
+        if (workerID > maxWorkId) {
+            throw new IllegalStateException("the work id " + workerID + " greater than max work Id " + maxWorkId);
+        }
+        workId = workerID;
+        log.info("snowflake work id {}", workId);
+    }
 
     private synchronized long nextId() {
         long now = now();

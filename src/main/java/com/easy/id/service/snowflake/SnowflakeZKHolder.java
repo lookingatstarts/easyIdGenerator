@@ -1,6 +1,8 @@
 package com.easy.id.service.snowflake;
 
 import com.alibaba.fastjson.JSON;
+import com.easy.id.config.Module;
+import com.easy.id.exception.SystemClockCallbackException;
 import com.easy.id.util.IPUtil;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,15 +16,14 @@ import org.apache.zookeeper.data.Stat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "easy-id-generator", name = "snowflake-enable", havingValue = "true")
+@Module(value = "snowflake.enable")
 public class SnowflakeZKHolder {
 
     private final String SPLIT = "-";
@@ -43,10 +44,14 @@ public class SnowflakeZKHolder {
     /**
      * 持久化workerId，文件存放位置
      */
-    private final String DUMP_PATH = "/workerID/dump.properties";
+    private final String DUMP_PATH = "workerID/workerID.properties";
+
     @Autowired
     @Qualifier("updateDataToZKScheduledExecutorService")
     private ScheduledExecutorService scheduledExecutorService;
+
+    @Value("${easy-id-generator.snowflake.load-worker-id-from-file-when-zk-down:true}")
+    private boolean loadWorkerIdFromFileWhenZkDown;
     /**
      * 本机地址
      */
@@ -60,17 +65,15 @@ public class SnowflakeZKHolder {
      * zk连接地址
      * eg: ip1:port1,ip2:port2
      */
-    @Value("${easy-id-generator.snowflake-enable.zk.connection-string}")
+    @Value("${easy-id-generator.snowflake.zk.connection-string}")
     private String zkConnectionString;
     private Integer workerId;
-    /**
-     * ZK_PATH/ip:port-0000001序列号
-     */
-    private String localZKPath;
     /**
      * 上次更新数据时间
      */
     private long lastUpdateAt;
+
+    private volatile boolean hasInitFinish = false;
 
     @PostConstruct
     public void postConstruct() {
@@ -81,107 +84,116 @@ public class SnowflakeZKHolder {
         }
     }
 
-    private boolean init() throws Exception {
-        localIp = IPUtil.getHostAddress();
-        this.localZKPath = ZK_PATH + "/" + localIp + ":" + localPort;
-        final CuratorFramework client = connectToZk();
+    public int getWorkerID() {
+        if (hasInitFinish) {
+            return workerId;
+        }
+        throw new IllegalStateException("worker id not init");
+    }
+
+    private void init() throws Exception {
         try {
+            localIp = IPUtil.getHostAddress();
+            String localZKPath = ZK_PATH + "/" + localIp + ":" + localPort;
+            CuratorFramework client = connectToZk();
             client.start();
             final Stat stat = client.checkExists().forPath(ZK_PATH);
             // 不存在根结点，第一次使用，创建根结点
             if (stat == null) {
-                // /easy-id-generator/snowflake/forever/ip:port-0000000,并上传数据
+                // 创建结点 /easy-id-generator/snowflake/forever/ip:port-xxx,并上传数据
                 localZKPath = createPersistentSequentialNode(client, localZKPath, buildData());
-                if (localZKPath == null) {
-                    return false;
-                }
                 workerId = getWorkerId(localZKPath);
+                // 持久化workerId
                 updateWorkerId(workerId);
                 // 定时上报本机时间到zk
                 scheduledUploadTimeToZK(client, localZKPath);
-                return true;
+                hasInitFinish = true;
+                return;
             }
-            Map<String, Integer> nodeMap = new HashMap<>(16);
-            Map<String, String> realNodeMap = new HashMap<>(16);
+            // Map<localAddress,workerId>
+            Map<String, Integer> localAddressWorkerIdMap = new HashMap<>(16);
+            // Map<localAddress,path>
+            Map<String, String> localAddressPathMap = new HashMap<>(16);
             for (String key : client.getChildren().forPath(ZK_PATH)) {
                 final String[] split = key.split("-");
-                realNodeMap.put(split[0], key);
+                localAddressPathMap.put(split[0], key);
                 // value=zk有序结点的需要
-                nodeMap.put(split[0], Integer.valueOf(split[1]));
+                localAddressWorkerIdMap.put(split[0], Integer.valueOf(split[1]));
             }
             String localAddress = localIp + ":" + localPort;
-            Integer workerId = nodeMap.get(localAddress);
+            workerId = localAddressWorkerIdMap.get(localAddress);
             if (workerId != null) {
-                localZKPath = ZK_PATH + "/" + realNodeMap.get(localAddress);
-                if (!checkTimestamp(client, localZKPath)) {
-                    throw new IllegalStateException("system time check error,forever node timestamp greater than this node time");
-                }
+                localZKPath = ZK_PATH + "/" + localAddressPathMap.get(localAddress);
+                // 校验时间是否回调
+                checkTimestamp(client, localZKPath);
                 scheduledUploadTimeToZK(client, localZKPath);
                 updateWorkerId(workerId);
-                return true;
+                hasInitFinish = true;
+                return;
             }
             localZKPath = createPersistentSequentialNode(client, localZKPath, buildData());
-            if (localZKPath == null) {
-                return false;
-            }
             workerId = Integer.parseInt((localZKPath.split("-"))[1]);
             scheduledUploadTimeToZK(client, localZKPath);
             updateWorkerId(workerId);
+            hasInitFinish = true;
         } catch (Exception e) {
-            log.error("can load worker id from zk", e);
-            final Integer workerIdFromFile = loadWorkerIdFromFile();
-            if (workerIdFromFile == null) {
-                return false;
+            if (!loadWorkerIdFromFileWhenZkDown) {
+                throw e;
             }
-            workerId = workerIdFromFile;
+            log.error("can load worker id from zk , try to load worker id from file", e);
+            // 从本地文件中读取workerId，如果系统时针回调，可能会出现
+            final Integer workerIdFromFile = loadWorkerIdFromFile();
+            if (workerIdFromFile != null) {
+                workerId = workerIdFromFile;
+                hasInitFinish = true;
+                return;
+            }
+            throw e;
         }
-        return false;
     }
 
 
     private Integer getWorkerId(String localZKPath) {
         String[] split = localZKPath.split(SPLIT);
-        return Integer.parseInt(split[0]);
+        return Integer.parseInt(split[1]);
     }
 
     /**
      * @return true 检查通过
      */
-    private boolean checkTimestamp(CuratorFramework client, String localZKPath) {
-        try {
-            final byte[] bytes = client.getData().forPath(localZKPath);
-            final Endpoint endpoint = parseBuildData(new String(bytes));
-            // 该节点的时间不能大于最后一次上报的时间
-            return !(endpoint.getTimestamp() > System.currentTimeMillis());
-        } catch (Exception e) {
-            log.error("get data fail for {}", localZKPath, e);
-            return false;
+    private void checkTimestamp(CuratorFramework client, String localZKPath) throws Exception {
+        final Endpoint endpoint = JSON.parseObject(new String(client.getData().forPath(localZKPath)), Endpoint.class);
+        // 该节点的时间不能大于最后一次上报的时间
+        if (endpoint.getTimestamp() > System.currentTimeMillis()) {
+            throw new SystemClockCallbackException("system clock callback");
         }
     }
 
-    private void scheduledUploadTimeToZK(CuratorFramework client, String path) {
+    private void scheduledUploadTimeToZK(CuratorFramework client, String localZKPath) {
         scheduledExecutorService.schedule(() -> {
+            // 如果时针回调了就不同步
             if (System.currentTimeMillis() < lastUpdateAt) {
                 return;
             }
             try {
-                client.setData().forPath(path, buildData());
+                client.setData().forPath(localZKPath, buildData());
                 lastUpdateAt = System.currentTimeMillis();
+                log.debug("upload time to zk at" + lastUpdateAt);
             } catch (Exception e) {
-                log.error("update init data error path is {} error is {}", path, e);
+                log.error("update init data error path is {} error is {}", localZKPath, e);
             }
         }, 5, TimeUnit.SECONDS);
     }
 
     private Integer loadWorkerIdFromFile() {
-        try {
-            final File file = ResourceUtils.getFile("classpath:" + DUMP_PATH);
+        try (InputStream resourceAsStream = this.getClass().getClassLoader().getResourceAsStream(DUMP_PATH)) {
             Properties properties = new Properties();
-            properties.load(new FileInputStream(file));
+            properties.load(resourceAsStream);
             final String workerID = properties.getProperty("workerID");
             if (workerID != null) {
                 return Integer.parseInt(workerID);
             }
+            return null;
         } catch (IOException e) {
             log.error("load worker id from file error", e);
         }
@@ -189,26 +201,25 @@ public class SnowflakeZKHolder {
     }
 
     private void updateWorkerId(int workerId) {
-        String classpath;
-        try {
-            classpath = ResourceUtils.getURL("classpath:").getFile();
-        } catch (FileNotFoundException e) {
-            log.error("", e);
+        if (!loadWorkerIdFromFileWhenZkDown) {
             return;
         }
-        File file = new File(classpath + DUMP_PATH);
-        if (!file.exists()) {
-            final boolean mkdirs = file.mkdirs();
-            if (!mkdirs) {
-                log.error("mkdir {} error", file.toString());
-                return;
-            }
-            log.info("mkdir {}", file.toString());
-        }
         try {
+            String classpath = ResourceUtils.getURL("classpath:").getFile();
+            File file = new File(classpath + "/" + DUMP_PATH);
+            if (!file.exists()) {
+                boolean mkdirs = file.getParentFile().mkdirs();
+                if (!mkdirs) {
+                    log.error("mkdir {} error", file.getParentFile().toString());
+                    return;
+                }
+                log.info("mkdir {}", file.toString());
+            }
             Files.write(file.toPath(), ("workerID=" + workerId).getBytes());
+        } catch (FileNotFoundException e) {
+            log.error("", e);
         } catch (IOException e) {
-            log.warn("write workerID to file {} error", file.toString(), e);
+            log.warn("write workerID to file {} error", DUMP_PATH, e);
         }
     }
 
@@ -230,10 +241,6 @@ public class SnowflakeZKHolder {
 
     private byte[] buildData() {
         return JSON.toJSONString(new Endpoint(localIp, localPort, System.currentTimeMillis())).getBytes();
-    }
-
-    public Endpoint parseBuildData(String json) {
-        return JSON.parseObject(json, Endpoint.class);
     }
 
     /**

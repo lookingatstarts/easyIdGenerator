@@ -1,7 +1,9 @@
 package com.easy.id.web;
 
+import com.easy.id.config.Module;
 import com.easy.id.service.EasyIdService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,11 +19,13 @@ import java.util.Set;
  * @createTime 2020年05月29日
  */
 @RestController
-@RequestMapping("/ids")
+@RequestMapping("/segment/ids")
 @Validated
-public class EasyIdController {
+@Module(value = "segment.enable")
+public class SegmentEasyIdController {
 
     @Autowired
+    @Qualifier("segmentEasyIdService")
     private EasyIdService easyIdService;
 
     @GetMapping("/next_id")

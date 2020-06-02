@@ -1,5 +1,7 @@
 package com.easy.id.service;
 
+import com.easy.id.service.snowflake.SnowflakeEasyIdService;
+
 import java.util.Set;
 
 /**

@@ -19,7 +19,8 @@ import java.util.Random;
  * @createTime 2020年05月29日
  */
 @Configuration
-@ConfigurationProperties(prefix = "easy-id")
+@Module(value = "segment.enable")
+@ConfigurationProperties(prefix = "easy-id-generator.segment")
 public class DataSourceConfig {
 
     @Setter
