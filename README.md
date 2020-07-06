@@ -21,3 +21,17 @@ easy-id-generator:
           connection-string: 127.0.0.1:2181          # ip:port,ip2:prort zk链接信息
         load-worker-id-from-file-when-zk-down: true  # 当zk不可访问时，从本地文件中读取之前备份的workerId
 ```
+
+## 环境配置
+
+- 下载docker
+- cmd命令行，cd到docker-compose.yml所在目录，执行docker-compose -d
+
+## 号段方式
+
+- 在数据库执行schema.sql脚本
+- 通过SegmentEasyIdController控制器，获取id
+
+## 雪花算法方式
+
+- 通过SnowflakeEasyIdController控制器，获取id
