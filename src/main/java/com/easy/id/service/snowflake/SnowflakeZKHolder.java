@@ -36,15 +36,15 @@ import java.util.concurrent.TimeUnit;
 @Module(value = "snowflake.enable")
 public class SnowflakeZKHolder {
 
-    private final String SPLIT = "-";
+    private static final String SPLIT = "-";
     /**
      * 保存所有数据持久的节点
      */
-    private final String ZK_PATH = "/easy-id-generator/snowflake/forever";
+    private static final String ZK_PATH = "/easy-id-generator/snowflake/forever";
     /**
      * 持久化workerId，文件存放位置
      */
-    private final String DUMP_PATH = "workerID/workerID.properties";
+    private static final String DUMP_PATH = "workerID/workerID.properties";
 
     @Autowired
     @Qualifier("updateDataToZKScheduledExecutorService")
@@ -100,7 +100,7 @@ public class SnowflakeZKHolder {
             final Stat stat = client.checkExists().forPath(ZK_PATH);
             // 不存在根结点，第一次使用，创建根结点
             if (stat == null) {
-                // 创建结点 /easy-id-generator/snowflake/forever/ip:port-xxx,并上传数据
+                // 创建有序永久结点 /easy-id-generator/snowflake/forever/ip:port-xxx,并上传数据
                 localZKPath = createPersistentSequentialNode(client, localZKPath, buildData());
                 workerId = getWorkerId(localZKPath);
                 // 持久化workerId
