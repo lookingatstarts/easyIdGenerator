@@ -35,3 +35,8 @@ easy-id-generator:
 ## 雪花算法方式
 
 - 通过SnowflakeEasyIdController控制器，获取id
+
+## 作者邮箱
+
+- zbbpoplar@163.com
+- lookingatstarts@gmail.com
