@@ -24,6 +24,9 @@ public class SegmentCachedIdGenerator implements IdGenerator {
     private final Object lock = new Object();
     private volatile SegmentId currentSegmentId;
     private volatile SegmentId nextSegmentId;
+    /**
+     * 是否异步加载下个号段中
+     */
     private volatile boolean isLoadingNextSegment = false;
 
     public SegmentCachedIdGenerator(ExecutorService fetchNextSegmentExecutor, SegmentIdService segmentIdService, String businessType) {
@@ -32,6 +35,9 @@ public class SegmentCachedIdGenerator implements IdGenerator {
         this.businessType = businessType;
     }
 
+    /**
+     * 如果当前号段不存在或者用完了，如果下个号段存在，优先使用下个号段
+     */
     private synchronized void loadCurrent() {
         if (currentSegmentId == null || !currentSegmentId.useful()) {
             // 下个号段没有加载

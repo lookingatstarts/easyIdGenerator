@@ -34,7 +34,7 @@ public class SegmentIdServiceImpl implements SegmentIdService {
     @Override
     public SegmentId fetchNextSegmentId(String businessType) {
         // 获取segment的时候，有可能存在version冲突，需要重试
-        Connection connection = null;
+        Connection connection;
         try {
             connection = dynamicDataSource.getConnection();
             connection.setAutoCommit(false);
@@ -52,21 +52,21 @@ public class SegmentIdServiceImpl implements SegmentIdService {
                 statement.setObject(3, System.currentTimeMillis());
                 statement.setObject(4, segment.getId());
                 statement.setObject(5, segment.getVersion());
-                int update;
                 try {
-                    update = statement.executeUpdate();
+                    if (statement.executeUpdate() == 1) {
+                        connection.commit();
+                        log.debug("fetch {} next segment {} success", businessType, segment.toString());
+                        return new SegmentId(segment);
+                    }
+                    // 乐观锁冲突，重试
+                    log.debug("fetch {} next segment {} conflict,retry", businessType, segment.toString());
                 } catch (SQLException e) {
                     connection.rollback();
                     throw e;
                 }
-                if (update == 1) {
-                    connection.commit();
-                    log.debug("fetch {} next segment {} success", businessType, segment.toString());
-                    return new SegmentId(segment);
-                }
-                log.info("fetch {} next segment {} conflict,retry", businessType, segment.toString());
             }
-            throw new FetchSegmentFailException("fetch " + businessType + " next segment fail");
+            // 在有限重试机会下，没有获取到segment
+            throw new FetchSegmentFailException("fetch " + businessType + " next segment fail after retry " + retry + " times");
         } catch (Exception e) {
             throw new FetchSegmentFailException(e);
         } finally {
