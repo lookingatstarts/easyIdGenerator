@@ -25,7 +25,7 @@ easy-id-generator:
 ## 环境配置
 
 - 下载docker
-- cmd命令行，cd到docker-compose.yml所在目录，执行docker-compose -d
+- cmd命令行，cd到docker-compose.yml所在目录，执行docker-compose up -d
 
 ## 号段方式
 
