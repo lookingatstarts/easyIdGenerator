@@ -26,3 +26,4 @@ target
 *.iml
 src/main/resources/docker/db1/**/
 src/main/resources/docker/db2/**/
+src/main/resources/docker/easy_id_generator_z1/
