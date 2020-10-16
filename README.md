@@ -25,7 +25,7 @@ easy-id-generator:
 ## 环境配置
 
 - 下载docker
-- cmd命令行，cd到docker-compose.yml所在目录，执行docker-compose -d
+- cmd命令行，cd到docker-compose.yml所在目录，执行docker-compose up -d
 
 ## 号段方式
 
@@ -35,3 +35,8 @@ easy-id-generator:
 ## 雪花算法方式
 
 - 通过SnowflakeEasyIdController控制器，获取id
+
+## 作者邮箱
+
+- zbbpoplar@163.com
+- lookingatstarts@gmail.com
