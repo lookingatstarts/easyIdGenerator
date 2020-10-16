@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.constraints.NotEmpty;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * @author zhangbingbing
@@ -29,13 +30,14 @@ public class SegmentEasyIdController {
     private EasyIdService easyIdService;
 
     @GetMapping("/next_id")
-    public Long getNextId(@NotEmpty String businessType) {
-        return easyIdService.getNextId(businessType);
+    public String getNextId(@NotEmpty String businessType) {
+        return easyIdService.getNextId(businessType).toString();
     }
 
     @GetMapping("/next_id/batches")
-    public Set<Long> getNextId(@RequestParam(value = "batches_size", defaultValue = "100") Integer batchSize,
-                               @NotEmpty String businessType) {
-        return easyIdService.getNextIdBatch(businessType, batchSize);
+    public Set<String> getNextId(@RequestParam(value = "batches_size", defaultValue = "100") Integer batchSize,
+                                 @NotEmpty String businessType) {
+        return easyIdService.getNextIdBatch(businessType, batchSize).stream()
+                .map(Object::toString).collect(Collectors.toSet());
     }
 }
