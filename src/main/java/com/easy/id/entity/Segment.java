@@ -29,7 +29,7 @@ public class Segment {
     private Long maxId;
 
     /**
-     * 步长
+     * 步长：号段长度
      */
     private Integer step;
 

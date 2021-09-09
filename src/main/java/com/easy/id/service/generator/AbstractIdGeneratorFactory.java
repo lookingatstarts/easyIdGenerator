@@ -5,8 +5,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class AbstractIdGeneratorFactory implements IdGeneratorFactory {
 
-    private Map<String, IdGenerator> idGeneratorMap = new ConcurrentHashMap<>();
+    private final Map<String, IdGenerator> idGeneratorMap = new ConcurrentHashMap<>();
 
+    /**
+     * 使用模版设计模式，目的时让子类复用父类获取IdGenerator的固定逻辑
+     */
     @Override
     public IdGenerator getIdGenerator(String businessType) {
         // 双重判断

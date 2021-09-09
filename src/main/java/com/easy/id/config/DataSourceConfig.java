@@ -39,9 +39,9 @@ public class DataSourceConfig {
 
     public static class DynamicDataSource {
 
-        private List<HikariDataSource> hikariDataSourceList;
+        private final List<HikariDataSource> hikariDataSourceList;
         // 同一个线程共用一个数据库连接
-        private ThreadLocal<Connection> connectionThreadLocal = new ThreadLocal<>();
+        private final ThreadLocal<Connection> connectionThreadLocal = new ThreadLocal<>();
 
         public DynamicDataSource(List<HikariDataSource> hikariDataSourceList) {
             this.hikariDataSourceList = hikariDataSourceList;

@@ -24,7 +24,7 @@ public class SegmentId {
      */
     private final long loadingNextSegmentAt;
 
-    private AtomicLong currentId;
+    private final AtomicLong currentId;
 
     private volatile boolean hasInit;
 
@@ -32,7 +32,7 @@ public class SegmentId {
         this.maxId = segment.getMaxId();
         this.currentId = new AtomicLong(segment.getMaxId() - segment.getStep());
         // 当该号段30%的id被使用完时，开始异步加载下一个号段
-        this.loadingNextSegmentAt = currentId.get() + (segment.getStep() * 3 / 10);
+        this.loadingNextSegmentAt = currentId.get() + (segment.getStep() * 3L / 10);
         this.increment = segment.getIncrement();
         this.remainder = segment.getRemainder();
         init();

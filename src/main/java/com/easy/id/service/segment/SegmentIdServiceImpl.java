@@ -53,13 +53,14 @@ public class SegmentIdServiceImpl implements SegmentIdService {
                 statement.setObject(4, segment.getId());
                 statement.setObject(5, segment.getVersion());
                 try {
+                    // 更新成功
                     if (statement.executeUpdate() == 1) {
                         connection.commit();
-                        log.debug("fetch {} next segment {} success", businessType, segment.toString());
+                        log.debug("fetch {} next segment {} success", businessType, segment);
                         return new SegmentId(segment);
                     }
                     // 乐观锁冲突，重试
-                    log.debug("fetch {} next segment {} conflict,retry", businessType, segment.toString());
+                    log.debug("fetch {} next segment {} conflict,retry", businessType, segment);
                 } catch (SQLException e) {
                     connection.rollback();
                     throw e;

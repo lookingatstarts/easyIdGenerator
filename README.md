@@ -1,8 +1,16 @@
 # EasyIdGenerator 生成全局唯一id
 
+- 递增性
+
+  插入数据库能够保证数据顺序写入，不会页分裂，磁盘利用率下降
+- 安全
+
+  id不能包含敏感信息，不能被暴露递增规律
+
 ## 支持两种方式
 
 - 号段方式：利用mysql的自增功能
+
 ```
 easy-id-generator:
     segment:
@@ -39,4 +47,3 @@ easy-id-generator:
 ## 作者邮箱
 
 - zbbpoplar@163.com
-- lookingatstarts@gmail.com
