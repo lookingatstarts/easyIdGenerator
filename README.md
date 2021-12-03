@@ -46,9 +46,9 @@ easy-id-generator:
 
 ## 体验
 
-[雪花❄️](http://java.iamzbb.tech/snowflake/ids/next_id/batches?batches_size=10)
+[雪花❄️](http://java.iamzbb.tech:8090/snowflake/ids/next_id/batches?batches_size=10)
 
-[号段☎](http://java.iamzbb.tech/segment/ids/next_id/batches?businessType=order_business&&batches_size=10)
+[号段☎](http://java.iamzbb.tech:8090/segment/ids/next_id/batches?businessType=order_business&&batches_size=10)
 
 ## 作者邮箱
 

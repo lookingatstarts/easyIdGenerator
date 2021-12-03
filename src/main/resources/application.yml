@@ -1,6 +1,5 @@
 server:
   port: 9090
-
 easy-id-generator:
   snowflake:
     enable: true
@@ -11,3 +10,6 @@ easy-id-generator:
     enable: false
     db-list: ["db1","db2"]
     fetch-segment-retry-times: 3 # 从数据库获取号段失败重试次数
+spring:
+  profiles:
+    active: prod
