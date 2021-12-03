@@ -27,5 +27,8 @@ target
 src/main/resources/docker/db1/**/
 src/main/resources/docker/db2/**/
 src/main/resources/docker/easy_id_generator_z1/
+src/main/resources/application-prod.yml
+src/main/resources/db1-prod.properties
+src/main/resources/db2-prod.properties
 src/.DS_Store
 .DS_Store
