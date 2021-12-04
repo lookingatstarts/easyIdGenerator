@@ -50,6 +50,10 @@ easy-id-generator:
 
 [号段☎](http://java.iamzbb.tech:8090/segment/ids/next_id/batches?businessType=order_business&&batchSize=10)
 
+## easy-id-generator-spring-boot-starter
+
+在starter分支
+
 ## 作者邮箱
 
 - zbbpoplar@163.com
