@@ -25,7 +25,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 public class SnowflakeZKHolder {
@@ -58,9 +61,8 @@ public class SnowflakeZKHolder {
     private long lastUpdateAt;
     private volatile boolean hasInitFinish = false;
 
-    public SnowflakeZKHolder(ScheduledExecutorService scheduledExecutorService,
-                             SnowflakeProperties properties) {
-        this.scheduledExecutorService = scheduledExecutorService;
+    public SnowflakeZKHolder(SnowflakeProperties properties) {
+        this.scheduledExecutorService = scheduledExecutorService();
         this.properties = properties;
     }
 
@@ -201,7 +203,7 @@ public class SnowflakeZKHolder {
                     log.error("mkdir {} error", file.getParentFile().toString());
                     return;
                 }
-                log.info("mkdir {}", file.toString());
+                log.info("mkdir {}", file);
             }
             Files.write(file.toPath(), ("workerID=" + workerId).getBytes());
         } catch (FileNotFoundException e) {
@@ -229,6 +231,18 @@ public class SnowflakeZKHolder {
 
     private byte[] buildData() {
         return JSON.toJSONString(new Endpoint(localIp, localPort, System.currentTimeMillis())).getBytes();
+    }
+
+    public ScheduledExecutorService scheduledExecutorService() {
+        AtomicInteger threadIncr = new AtomicInteger(0);
+        return new ScheduledThreadPoolExecutor(2, (r) -> {
+            int incr = threadIncr.incrementAndGet();
+            if (incr >= 1000) {
+                threadIncr.set(0);
+                incr = 1;
+            }
+            return new Thread(r, "upload-data-to-zk-schedule-thread" + incr);
+        }, new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
     /**

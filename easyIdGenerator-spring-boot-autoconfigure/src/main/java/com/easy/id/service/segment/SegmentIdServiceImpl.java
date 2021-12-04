@@ -1,15 +1,12 @@
 package com.easy.id.service.segment;
 
-import com.easy.id.autoconfigure.SegmentConfiguration;
+import com.easy.id.autoconfigure.SegmentAutoConfiguration;
+import com.easy.id.autoconfigure.SegmentProperties;
 import com.easy.id.entity.Segment;
 import com.easy.id.entity.SegmentId;
 import com.easy.id.exception.FetchSegmentFailException;
 import com.easy.id.exception.SegmentNotFoundException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.stereotype.Service;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -20,16 +17,18 @@ import java.sql.SQLException;
  * 号段的方式
  */
 @Slf4j
-@Service
-@ConditionalOnBean(SegmentConfiguration.class)
 public class SegmentIdServiceImpl implements SegmentIdService {
 
     private final static String SELECT_BY_BUSINESS_TYPE_SQL = "select * from segment where business_type=?";
     private final static String UPDATE_SEGMENT_MAX_ID = "update segment set max_id= ?,version=?,updated_at=? where id =? and version=?";
-    @Value("${easy-id-generator.segment.fetch-segment-retry-times:2}")
-    private int retry;
-    @Autowired
-    private SegmentConfiguration.DynamicDataSource dynamicDataSource;
+    private final SegmentProperties properties;
+    private final SegmentAutoConfiguration.DynamicDataSource dynamicDataSource;
+
+    public SegmentIdServiceImpl(SegmentProperties properties,
+                                SegmentAutoConfiguration.DynamicDataSource dynamicDataSource) {
+        this.properties = properties;
+        this.dynamicDataSource = dynamicDataSource;
+    }
 
     @Override
     public SegmentId fetchNextSegmentId(String businessType) {
@@ -38,7 +37,8 @@ public class SegmentIdServiceImpl implements SegmentIdService {
         try {
             connection = dynamicDataSource.getConnection();
             connection.setAutoCommit(false);
-            for (int i = 0; i < retry; i++) {
+            Integer retryTimes = properties.getFetchSegmentRetryTimes();
+            for (int i = 0; i < retryTimes; i++) {
                 PreparedStatement statement = connection.prepareStatement(SELECT_BY_BUSINESS_TYPE_SQL);
                 statement.setObject(1, businessType);
                 final ResultSet resultSet = statement.executeQuery();
@@ -67,7 +67,7 @@ public class SegmentIdServiceImpl implements SegmentIdService {
                 }
             }
             // 在有限重试机会下，没有获取到segment
-            throw new FetchSegmentFailException("fetch " + businessType + " next segment fail after retry " + retry + " times");
+            throw new FetchSegmentFailException("fetch " + businessType + " next segment fail after retry " + retryTimes + " times");
         } catch (Exception e) {
             throw new FetchSegmentFailException(e);
         } finally {
@@ -94,4 +94,5 @@ public class SegmentIdServiceImpl implements SegmentIdService {
             return segment;
         }
     }
+
 }

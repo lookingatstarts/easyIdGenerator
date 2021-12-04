@@ -1,7 +1,12 @@
 package com.easy.id.autoconfigure;
 
+import com.easy.id.service.segment.SegmentEasyIdService;
+import com.easy.id.service.segment.SegmentIdGeneratorFactory;
+import com.easy.id.service.segment.SegmentIdService;
+import com.easy.id.service.segment.SegmentIdServiceImpl;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -13,31 +18,33 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
 @EnableConfigurationProperties(value = SegmentProperties.class)
-@ConditionalOnProperty(value = "easy-id-generator.segment.enable", havingValue = "true")
-public class SegmentConfiguration {
+@ConditionalOnProperty(prefix = "easy-id-generator.segment", value = "enable", havingValue = "true")
+@Slf4j
+public class SegmentAutoConfiguration {
 
     @Autowired
     private SegmentProperties properties;
 
+    public SegmentAutoConfiguration() {
+        log.info("启动号段方式生成ID");
+    }
+
     @Bean
-    public ExecutorService fetchNextSegmentExecutor() {
-        AtomicInteger threadIncr = new AtomicInteger(0);
-        return new ThreadPoolExecutor(1, 2, 5, TimeUnit.MINUTES, new SynchronousQueue<>(), r -> {
-            int incr = threadIncr.incrementAndGet();
-            if (incr >= 1000) {
-                threadIncr.set(0);
-                incr = 1;
-            }
-            return new Thread(r, "fetch-next-segment-thread-" + incr);
-        }, new ThreadPoolExecutor.CallerRunsPolicy());
+    public SegmentIdService segmentIdService() {
+        return new SegmentIdServiceImpl(properties, dynamicDataSource());
+    }
+
+    @Bean
+    public SegmentIdGeneratorFactory segmentIdGeneratorFactory() {
+        return new SegmentIdGeneratorFactory(segmentIdService());
+    }
+
+    @Bean
+    public SegmentEasyIdService segmentEasyIdService(SegmentIdGeneratorFactory segmentIdGeneratorFactory) {
+        return new SegmentEasyIdService(segmentIdGeneratorFactory);
     }
 
     @Bean

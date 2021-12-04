@@ -21,6 +21,12 @@ public class ApiResponse<T> implements Serializable {
         return response;
     }
 
+    public static ApiResponse<Void> error(String msg) {
+        ApiResponse<Void> response = new ApiResponse<>();
+        response.setMsg(msg);
+        return response;
+    }
+
     public static ApiResponse<Void> exception(Throwable throwable) {
         log.error("系统错误", throwable);
         ApiResponse<Void> apiResponse = new ApiResponse<>();

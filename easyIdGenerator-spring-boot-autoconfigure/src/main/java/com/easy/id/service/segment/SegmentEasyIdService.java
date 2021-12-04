@@ -1,20 +1,17 @@
 package com.easy.id.service.segment;
 
-import com.easy.id.autoconfigure.SegmentConfiguration;
 import com.easy.id.service.EasyIdService;
 import com.easy.id.service.generator.IdGeneratorFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.stereotype.Service;
 
 import java.util.Set;
 
-@Service
-@ConditionalOnBean(SegmentConfiguration.class)
 public class SegmentEasyIdService implements EasyIdService {
 
-    @Autowired
-    private IdGeneratorFactory idGeneratorFactory;
+    private final IdGeneratorFactory idGeneratorFactory;
+
+    public SegmentEasyIdService(IdGeneratorFactory factory) {
+        this.idGeneratorFactory = factory;
+    }
 
     @Override
     public Long getNextId(String businessType) {

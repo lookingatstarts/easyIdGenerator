@@ -1,10 +1,6 @@
 package com.easy.id.service.snowflake;
 
-import com.easy.id.autoconfigure.SnowflakeConfiguration;
 import com.easy.id.service.EasyIdService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.stereotype.Service;
 
 import java.util.Set;
 
@@ -14,12 +10,13 @@ import java.util.Set;
  * @Description 雪花算法实现
  * @createTime 2020年06月01日
  */
-@Service
-@ConditionalOnBean(SnowflakeConfiguration.class)
 public class SnowflakeEasyIdService implements EasyIdService {
 
-    @Autowired
-    private Snowflake snowflake;
+    private final Snowflake snowflake;
+
+    public SnowflakeEasyIdService(Snowflake snowflake) {
+        this.snowflake = snowflake;
+    }
 
     @Override
     public Long getNextId(String businessType) {

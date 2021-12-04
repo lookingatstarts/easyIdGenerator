@@ -1,2 +1,3 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-com.easy.id.autoconfigure.EasyIdGeneratorAutoConfiguration
+com.easy.id.autoconfigure.SnowflakeAutoConfiguration,\
+com.easy.id.autoconfigure.SegmentAutoConfiguration
