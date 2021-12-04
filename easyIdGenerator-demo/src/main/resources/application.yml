@@ -1,0 +1,12 @@
+server:
+  port: 9090
+easy-id-generator:
+  snowflake:
+    enable: true # 开启
+    zk:
+      connection-string: 127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183
+    load-worker-id-from-file-when-zk-down: true  # 当zk不可访问时，从本地文件中读取之前备份的workerId
+  segment:
+    enable: true # 开启
+    db-list: [ "db1","db2" ]
+    fetch-segment-retry-times: 3 # 从数据库获取号段失败重试次数
