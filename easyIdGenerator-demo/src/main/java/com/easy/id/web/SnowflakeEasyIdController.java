@@ -4,6 +4,7 @@ import com.easy.id.service.snowflake.SnowflakeEasyIdService;
 import com.easy.id.web.resp.ApiResponse;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/snowflake/ids")
 @Validated
+@ConditionalOnBean(SnowflakeEasyIdService.class)
 public class SnowflakeEasyIdController {
 
     @Autowired
