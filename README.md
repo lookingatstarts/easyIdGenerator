@@ -44,12 +44,6 @@ easy-id-generator:
 
 - 通过SnowflakeEasyIdController控制器，获取id
 
-## 体验
-
-[雪花❄️](http://java.iamzbb.tech:8090/snowflake/ids/next_id/batches?batchSize=10)
-
-[号段☎](http://java.iamzbb.tech:8090/segment/ids/next_id/batches?businessType=order_business&&batchSize=10)
-
 ## easy-id-generator-spring-boot-starter
 
 在starter分支
