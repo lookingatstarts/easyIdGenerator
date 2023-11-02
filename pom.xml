@@ -20,7 +20,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <junit.version>4.12</junit.version>
         <mysql.connector.version>8.0.25</mysql.connector.version>
-        <com.alibaba.fastjson.version>1.2.78</com.alibaba.fastjson.version>
+        <com.alibaba.fastjson.version>1.2.83</com.alibaba.fastjson.version>
         <lombok.version>1.18.22</lombok.version>
         <curator.version>2.6.0</curator.version>
     </properties>
